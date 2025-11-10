@@ -22,15 +22,15 @@ author_imitation/
 ├── models/                  # Trained models
 ├── results/                 # Evaluation results
 └── src/
-    ├── config.py           # Global configuration
+    ├── config.py            # Global configuration
     ├── preprocess.py        # Dataset preprocessing
     ├── g0_train.py          # Train baseline generator
     ├── daa_train.py         # Train authorship attribution discriminator
     ├── dag_preprocess.py    # Prepare augmented discriminator dataset
-    ├── dag_train.py          # Train augmented discriminator
+    ├── dag_train.py         # Train augmented discriminator
     ├── gpt_generate.py      # Generate text samples
-    ├── bert_evaluate.py      # Evaluate generated texts
-    └── main_loop.py          # Main iterative training loop
+    ├── bert_evaluate.py     # Evaluate generated texts
+    └── main_loop.py         # Main iterative training loop
 ```
 
 ## Setup
@@ -200,7 +200,7 @@ python src/dag_preprocess.py \
 
 **Output:** Dataset saved to `data/processed/reuter/discriminator_dag/` with metadata in `data/processed/reuter/metadata/dag_label_mapping.json`
 
-### Step 7: Train Discriminator (D₀)
+### Step 6: Train Discriminator (D₀)
 
 Train the augmented discriminator that can classify text as target author, distractors, or generated:
 
@@ -220,7 +220,7 @@ python src/dag_train.py --num-train-epochs 3 --dataset-dir data/processed/reuter
 
 **Output:** Model saved to `models/bert_Dag_100_4e/` with training metrics and classification report
 
-### Step 8: Main Iterative Training Loop
+### Step 7: Main Iterative Training Loop
 
 Run the main loop that iteratively trains generators and discriminators using hard negative mining:
 
