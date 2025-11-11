@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 
 @dataclass(frozen=True)
@@ -81,10 +81,10 @@ class G0TrainingConfig:
     save_total_limit: int = 2
     eval_ratio: float = 0.0
     max_steps: Optional[int] = None
-    fp16: bool = False
+    fp16: bool = True
     bf16: bool = False
     dataloader_num_workers: int = 4
-    gradient_checkpointing: bool = False
+    gradient_checkpointing: bool = True
     report_to: Optional[List[str]] = None
 
 
@@ -112,10 +112,10 @@ class DaaTrainingConfig:
 
     model_name: str = "bert-base-uncased"
     learning_rate: float = 2e-5
-    num_train_epochs: float = 4.0
-    per_device_train_batch_size: int = 8
-    per_device_eval_batch_size: int = 8
-    gradient_accumulation_steps: int = 4
+    num_train_epochs: float = 15.0
+    per_device_train_batch_size: int = 16
+    per_device_eval_batch_size: int = 16
+    gradient_accumulation_steps: int = 1
     warmup_steps: int = 0
     weight_decay: float = 0.01
     logging_steps: int = 50
@@ -137,16 +137,16 @@ class DagTrainingConfig:
 
     model_name: str = "bert-base-uncased"
     learning_rate: float = 2e-5
-    num_train_epochs: float = 4.0
+    num_train_epochs: float = 8.0
     per_device_train_batch_size: int = 16
-    per_device_eval_batch_size: int = 32
+    per_device_eval_batch_size: int = 16
     gradient_accumulation_steps: int = 1
     warmup_steps: int = 0
     weight_decay: float = 0.01
     logging_steps: int = 50
     eval_steps: int = 200
     save_steps: int = 200
-    save_total_limit: int = 2
+    save_total_limit: int = 0
     max_steps: Optional[int] = None
     fp16: bool = False
     bf16: bool = False
@@ -155,49 +155,19 @@ class DagTrainingConfig:
     report_to: Optional[List[str]] = None
     metric_for_best_model: str = "eval_accuracy"
     generated_eval_ratio: float = 0.1
+    greater_is_better: bool = True
 
 
 @dataclass(frozen=True)
-class BinaryDiscriminatorConfig:
-    """Hyperparameters for binary discriminators used in the main loop."""
+class LoopConfig:
+    """Configuration for the iterative training loop."""
 
-    model_name: str = "bert-base-uncased"
-    learning_rate: float = 2e-5
-    num_train_epochs: float = 2.0
-    per_device_train_batch_size: int = 16
-    per_device_eval_batch_size: int = 32
-    gradient_accumulation_steps: int = 1
-    warmup_steps: int = 0
-    weight_decay: float = 0.01
-    logging_steps: int = 50
-    eval_ratio: float = 0.2
-    fp16: bool = False
-    bf16: bool = False
-    gradient_checkpointing: bool = False
-    dataloader_num_workers: int = 4
-    report_to: Optional[List[str]] = None
-
-
-@dataclass(frozen=True)
-class MainLoopConfig:
-    """Controls for the iterative generator/discriminator training loop."""
-
-    num_iterations: int = 10
-    samples_per_iteration: int = 200
-    generation_max_new_tokens: int = 200
-    generation_min_new_tokens: int = 20
-    generation_temperature: float = 0.8
-    generation_top_k: int = 50
-    generation_top_p: float = 0.95
-    generation_num_return_sequences: int = 1
-    generation_batch_size: int = 2
-    prompt_char_limit: int = 200
-    hard_negative_ratio: float = 0.1
-    hard_negative_threshold: float = 0.15
-    max_hard_negatives: Optional[int] = None
-    max_generated_history: Optional[int] = 5000
-    generator_epochs: float = 10.0
-    discriminator_epochs: float = 3.0
+    num_iterations: int = 20
+    num_sequences: int = 300
+    prompt_num_words: int = 10
+    hard_negative_threshold: float = 0.2
+    num_hard_negs_per_iteration: int = 10
+    real_to_generated_ratio: Tuple[int, int] = (2, 1)
 
 
 @dataclass(frozen=True)
@@ -211,8 +181,7 @@ class Config:
     generation: GenerationConfig = field(default_factory=GenerationConfig)
     daa_training: DaaTrainingConfig = field(default_factory=DaaTrainingConfig)
     dag_training: DagTrainingConfig = field(default_factory=DagTrainingConfig)
-    binary_discriminator: BinaryDiscriminatorConfig = field(default_factory=BinaryDiscriminatorConfig)
-    main_loop: MainLoopConfig = field(default_factory=MainLoopConfig)
+    loop: LoopConfig = field(default_factory=LoopConfig)
     random_seed: int = 42
 
 

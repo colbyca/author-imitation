@@ -11,6 +11,7 @@ import argparse
 import json
 import logging
 import sys
+import time
 from dataclasses import asdict
 from pathlib import Path
 from typing import List, Optional, Sequence
@@ -167,7 +168,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output-format",
         choices=["text", "jsonl"],
-        default="text",
+        default="jsonl",
         help="Format to use when writing outputs to --output-file.",
     )
     parser.add_argument(
@@ -194,18 +195,22 @@ def load_model_and_tokenizer(
     model_name: Optional[str],
 ) -> tuple[GPT2LMHeadModel, GPT2TokenizerFast]:
     """Load GPT-2 model and tokenizer from either a directory or model name."""
+    start_time = time.time()
     if model_dir is not None:
         LOGGER.info("Loading fine-tuned model from directory: %s", model_dir)
-        return load_generator(model_dir)
+        model, tokenizer = load_generator(model_dir)
     elif model_name is not None:
         LOGGER.info("Loading raw GPT-2 model: %s", model_name)
         tokenizer = GPT2TokenizerFast.from_pretrained(model_name)
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
         model = GPT2LMHeadModel.from_pretrained(model_name)
-        return model, tokenizer
     else:
         raise ValueError("Either --model-dir or --model-name must be provided.")
+    
+    load_time = time.time() - start_time
+    LOGGER.info("Model loading completed in %.2f seconds", load_time)
+    return model, tokenizer
 
 
 def load_all_author_texts() -> Sequence[str]:
@@ -368,10 +373,19 @@ def main() -> None:
     LOGGER.info("Using device: %s", device)
 
     model, tokenizer = load_model_and_tokenizer(args.model_dir, args.model_name)
+    
+    # Time model transfer to device
+    device_transfer_start = time.time()
     model = model.to(device)
+    device_transfer_time = time.time() - device_transfer_start
+    if device_transfer_time > 0.1:  # Only log if it takes noticeable time
+        LOGGER.info("Model transfer to device completed in %.2f seconds", device_transfer_time)
+    
     generation_kwargs = build_generation_kwargs(args, tokenizer)
     LOGGER.debug("Generation kwargs: %s", generation_kwargs)
 
+    # Time the generation process
+    generation_start = time.time()
     samples = generate_sequences(
         model,
         tokenizer,
@@ -380,6 +394,30 @@ def main() -> None:
         generation_kwargs=generation_kwargs,
         logger=LOGGER,
     )
+    generation_time = time.time() - generation_start
+    
+    # Calculate statistics
+    num_prompts = len(prompts)
+    num_return_sequences = int(generation_kwargs.get("num_return_sequences", 1))
+    total_generations = len(samples)
+    max_new_tokens = generation_kwargs.get("max_new_tokens", 0)
+    
+    # Estimate total tokens generated (approximate)
+    total_tokens_approx = total_generations * max_new_tokens
+    tokens_per_second = total_tokens_approx / generation_time if generation_time > 0 else 0
+    time_per_prompt = generation_time / num_prompts if num_prompts > 0 else 0
+    time_per_generation = generation_time / total_generations if total_generations > 0 else 0
+    
+    # Log timing results
+    LOGGER.info("=" * 60)
+    LOGGER.info("Generation timing results:")
+    LOGGER.info("  - Total generation time: %.2f seconds", generation_time)
+    LOGGER.info("  - Time per prompt: %.3f seconds", time_per_prompt)
+    LOGGER.info("  - Time per generation: %.3f seconds", time_per_generation)
+    LOGGER.info("  - Approximate tokens per second: %.1f", tokens_per_second)
+    LOGGER.info("  - Total prompts processed: %d", num_prompts)
+    LOGGER.info("  - Total generations: %d", total_generations)
+    LOGGER.info("=" * 60)
 
     results = group_generations(
         prompts,

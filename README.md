@@ -90,7 +90,7 @@ python src/preprocess.py --overwrite
 - Discriminator dataset: `data/processed/reuter/discriminator_daa/`
 - Metadata: `data/processed/reuter/metadata/`
 
-### Step 2: Train Baseline Generator (G₀)
+### Step 2: Train Baseline Generator (G_0)
 
 Train the baseline GPT-2 generator on the target author's corpus:
 
@@ -122,7 +122,87 @@ python src/g0_train.py \
 
 **Output:** Model saved to `models/gpt2_G0/` (or specified directory)
 
-### Step 3: Train Authorship Attribution Discriminator (D_aa)
+### Step 3: Generate Text Samples
+
+Generate text samples using the trained generator:
+
+```bash
+python src/gpt_generate.py --model-dir models/gpt2_G0 --auto-prompt --num-auto-prompts 200 --output-file data/generated/g0_200.jsonl
+```
+
+**Options:**
+- `--model-dir PATH`: Path to fine-tuned GPT-2 model (required if not using `--model-name`)
+- `--model-name NAME`: Use raw pre-trained GPT-2 model (e.g., "gpt2-large")
+- `--auto-prompt`: Automatically generate prompts from target author texts
+- `--num-auto-prompts INT`: Number of prompts when using `--auto-prompt` (default: 1)
+- `--prompt TEXT`: Manual prompt text (can be repeated)
+- `--prompt-file PATH`: File containing prompts (one per line)
+- `--max-new-tokens INT`: Maximum tokens to generate (default: 200)
+- `--min-new-tokens INT`: Minimum tokens to generate (default: 0)
+- `--temperature FLOAT`: Sampling temperature (default: 0.8)
+- `--top-k INT`: Top-k sampling (default: 50)
+- `--top-p FLOAT`: Nucleus sampling (default: 0.95)
+- `--output-file PATH`: Output JSONL file (default: stdout)
+
+**Output:** JSONL file with generated samples containing `prompt`, `completion`, and `full_text` fields
+
+
+### Step 4: Prepare Augmented Discriminator Dataset (D_ag)
+
+Create a dataset for the augmented discriminator that includes a "generated" class:
+
+```bash
+python src/dag_preprocess.py \
+    --generated-file data/generated/g0_200.jsonl \
+    --num-generated-samples 200 \
+    --output-dir data/processed/reuter/discriminator_dag
+```
+
+**Options:**
+- `--daa-dataset-dir PATH`: Path to D_aa dataset (default: from config)
+- `--metadata-dir PATH`: Path to metadata directory (default: from config)
+- `--generated-file PATH`: Path to JSONL file with generated texts (required)
+- `--num-generated-samples INT`: Number of generated samples to use (required)
+- `--generated-train-ratio FLOAT`: Ratio for train/validation split (default: 0.5)
+- `--output-dir PATH`: Directory to save D_ag dataset (default: from config)
+- `--overwrite`: Remove existing dataset before writing
+- `--seed INT`: Random seed for reproducibility
+
+**Output:** Dataset saved to `data/processed/reuter/discriminator_dag/` with metadata in `data/processed/reuter/metadata/dag_label_mapping.json`
+
+### Step 5: Train a baseline discriminator (D_ag)
+
+Train a BERT classifier with generated text as a negative class:
+
+First, generate some text samples from an untrained generator:
+
+```bash
+python src/gpt_generate.py --model-name gpt2-large --auto-prompt --num-auto-prompts 100 --output-file data/generated/gpt2_100.jsonl
+```
+
+prepare the dataset:
+```bash
+python src/dag_preprocess.py --generated-file data/generated/gpt2_100.jsonl --num-generated-samples 100 --output-dir data/processed/reuter/discriminator_dag
+```
+
+Then, train the discriminator:
+
+```bash
+python src/dag_train.py --dataset-dir data/processed/reuter/discriminator_dag --output-dir models/bert_D0 --classification-report --num-train-epochs 10
+```
+
+**Options:**
+- `--dataset-dir PATH`: Path to discriminator dataset (default: from config)
+- `--metadata-dir PATH`: Path to metadata directory (default: from config)
+- `--output-dir PATH`: Directory to save model (default: `models/bert_D0`)
+- `--model-name NAME`: Base BERT model (default: "bert-base-uncased")
+- `--num-train-epochs FLOAT`: Number of training epochs (default: 4.0)
+- `--learning-rate FLOAT`: Learning rate (default: 2e-5)
+- `--per-device-train-batch-size INT`: Batch size (default: 8)
+- `--classification-report`: Generate detailed classification report
+- `--overwrite-output-dir`: Overwrite existing output directory
+
+### Step 6: Train Authorship Attribution Discriminator (D_aa)
 
 Train a BERT classifier to distinguish between target author and distractors:
 
@@ -152,75 +232,7 @@ python src/daa_train.py \
 
 **Output:** Model saved to `models/bert_Daa/` with training metrics and optional classification report
 
-### Step 4: Generate Text Samples
-
-Generate text samples using the trained generator:
-
-```bash
-python src/gpt_generate.py --model-dir models/gpt2_G0 --auto-prompt --num-auto-prompts 200 --output-file data/generated/g0_200.jsonl
-```
-
-**Options:**
-- `--model-dir PATH`: Path to fine-tuned GPT-2 model (required if not using `--model-name`)
-- `--model-name NAME`: Use raw pre-trained GPT-2 model (e.g., "gpt2-large")
-- `--auto-prompt`: Automatically generate prompts from target author texts
-- `--num-auto-prompts INT`: Number of prompts when using `--auto-prompt` (default: 1)
-- `--prompt TEXT`: Manual prompt text (can be repeated)
-- `--prompt-file PATH`: File containing prompts (one per line)
-- `--max-new-tokens INT`: Maximum tokens to generate (default: 200)
-- `--min-new-tokens INT`: Minimum tokens to generate (default: 0)
-- `--temperature FLOAT`: Sampling temperature (default: 0.8)
-- `--top-k INT`: Top-k sampling (default: 50)
-- `--top-p FLOAT`: Nucleus sampling (default: 0.95)
-- `--output-file PATH`: Output JSONL file (default: stdout)
-
-**Output:** JSONL file with generated samples containing `prompt`, `completion`, and `full_text` fields
-
-
-### Step 5: Prepare Augmented Discriminator Dataset (D_ag)
-
-Create a dataset for the augmented discriminator that includes a "generated" class:
-
-```bash
-python src/dag_preprocess.py \
-    --generated-file data/generated/g0_200.jsonl \
-    --num-generated-samples 200 \
-    --output-dir data/processed/reuter/discriminator_dag
-```
-
-**Options:**
-- `--daa-dataset-dir PATH`: Path to D_aa dataset (default: from config)
-- `--metadata-dir PATH`: Path to metadata directory (default: from config)
-- `--generated-file PATH`: Path to JSONL file with generated texts (required)
-- `--num-generated-samples INT`: Number of generated samples to use (required)
-- `--generated-train-ratio FLOAT`: Ratio for train/validation split (default: 0.5)
-- `--output-dir PATH`: Directory to save D_ag dataset (default: from config)
-- `--overwrite`: Remove existing dataset before writing
-- `--seed INT`: Random seed for reproducibility
-
-**Output:** Dataset saved to `data/processed/reuter/discriminator_dag/` with metadata in `data/processed/reuter/metadata/dag_label_mapping.json`
-
-### Step 7: Train Discriminator (D₀)
-
-Train the augmented discriminator that can classify text as target author, distractors, or generated:
-
-```bash
-python src/dag_train.py --num-train-epochs 3 --dataset-dir data/processed/reuter/discriminator_dag --output-dir models/bert_D0 --classification-report
-```
-
-**Options:**
-- `--dataset-dir PATH`: Path to D_ag dataset (default: from config)
-- `--metadata-dir PATH`: Path to metadata directory (default: from config)
-- `--output-dir PATH`: Directory to save model (default: `models/bert_Dag`)
-- `--model-name NAME`: Base BERT model (default: "bert-base-uncased")
-- `--num-train-epochs FLOAT`: Number of training epochs (default: 4.0)
-- `--learning-rate FLOAT`: Learning rate (default: 2e-5)
-- `--classification-report`: Generate detailed classification report
-- `--overwrite-output-dir`: Overwrite existing output directory
-
-**Output:** Model saved to `models/bert_Dag_100_4e/` with training metrics and classification report
-
-### Step 8: Main Iterative Training Loop
+### Step 7: Main Iterative Training Loop
 
 Run the main loop that iteratively trains generators and discriminators using hard negative mining:
 

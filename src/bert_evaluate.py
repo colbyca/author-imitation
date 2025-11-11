@@ -11,7 +11,7 @@ import json
 import logging
 from collections import Counter
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 import torch
@@ -183,6 +183,10 @@ def classify_texts(
     )
     model.to(device)
     model.eval()
+    # Check for NaNs in model parameters
+    for name, param in model.named_parameters():
+        if torch.isnan(param).any():
+            raise RuntimeError(f"Model parameter '{name}' contains NaN values in {model_dir}")
     
     # Determine max_length
     if max_length is None:
@@ -239,6 +243,58 @@ def compute_confidence_scores(logits: np.ndarray) -> np.ndarray:
     exp_logits = np.exp(logits - np.max(logits, axis=-1, keepdims=True))
     probabilities = exp_logits / np.sum(exp_logits, axis=-1, keepdims=True)
     return probabilities
+
+
+def select_hard_negatives(
+    texts: Sequence[str],
+    predictions: np.ndarray,
+    confidences: np.ndarray,
+    id2label: Dict[int, str],
+    target_author: str,
+    threshold: float,
+    max_count: int,
+) -> List[Tuple[str, float]]:
+    """Select hard negatives from generated texts.
+    
+    Hard negatives are generated texts that were predicted as the target author
+    with confidence above the threshold. They are sorted by confidence (descending)
+    and the top max_count are returned.
+    
+    Args:
+        texts: Generated text samples
+        predictions: Predicted label IDs (array of integers)
+        confidences: Confidence scores for each class (array of shape [num_texts, num_classes])
+        id2label: Mapping from label ID to label name
+        target_author: Name of the target author to identify hard negatives for
+        threshold: Minimum confidence threshold for hard negatives
+        max_count: Maximum number of hard negatives to return
+    
+    Returns:
+        List of (text, confidence) tuples, sorted by confidence descending
+    """
+    # Find target author label ID
+    target_label_id = None
+    for label_id, label_name in id2label.items():
+        if label_name == target_author:
+            target_label_id = label_id
+            break
+    
+    if target_label_id is None:
+        raise ValueError(f"Target author '{target_author}' not found in id2label mapping.")
+    
+    # Filter texts predicted as target author with confidence > threshold
+    hard_negatives: List[Tuple[str, float]] = []
+    for i, (text, pred_id, conf_row) in enumerate(zip(texts, predictions, confidences)):
+        if int(pred_id) == target_label_id:
+            confidence = float(conf_row[target_label_id])
+            if confidence >= threshold:
+                hard_negatives.append((text, confidence))
+    
+    # Sort by confidence descending
+    hard_negatives.sort(key=lambda x: x[1], reverse=True)
+    
+    # Return top max_count
+    return hard_negatives[:max_count]
 
 
 def format_distribution(
