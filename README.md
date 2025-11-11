@@ -22,15 +22,15 @@ author_imitation/
 ├── models/                  # Trained models
 ├── results/                 # Evaluation results
 └── src/
-    ├── config.py           # Global configuration
+    ├── config.py            # Global configuration
     ├── preprocess.py        # Dataset preprocessing
     ├── g0_train.py          # Train baseline generator
     ├── daa_train.py         # Train authorship attribution discriminator
     ├── dag_preprocess.py    # Prepare augmented discriminator dataset
-    ├── dag_train.py          # Train augmented discriminator
+    ├── dag_train.py         # Train augmented discriminator
     ├── gpt_generate.py      # Generate text samples
-    ├── bert_evaluate.py      # Evaluate generated texts
-    └── main_loop.py          # Main iterative training loop
+    ├── bert_evaluate.py     # Evaluate generated texts
+    └── main_loop.py         # Main iterative training loop
 ```
 
 ## Setup
@@ -232,6 +232,7 @@ python src/daa_train.py \
 
 **Output:** Model saved to `models/bert_Daa/` with training metrics and optional classification report
 
+### Step 7: Main Iterative Training Loop
 ### Step 7: Main Iterative Training Loop
 
 Run the main loop that iteratively trains generators and discriminators using hard negative mining:
