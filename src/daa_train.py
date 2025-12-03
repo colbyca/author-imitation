@@ -1,7 +1,7 @@
-"""Train the multi-class BERT authorship attribution model (D_aa).
+"""Train the holdout authorship attribution model (D_aa).
 
 This script fine-tunes a BERT sequence classification model on the processed
-Reuters dataset produced by :mod:`src.preprocess`. It evaluates the model at
+Reuters dataset produced by "src.preprocess". It evaluates the model at
 regular checkpoint intervals and saves the best-performing checkpoint together
 with training metrics for later inspection.
 """

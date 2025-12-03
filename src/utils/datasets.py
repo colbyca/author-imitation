@@ -53,38 +53,3 @@ def collect_texts(dataset: Dataset, column: str = "text") -> List[str]:
     if column not in dataset.column_names:
         raise ValueError(f"Dataset is missing required column '{column}'.")
     return [str(text) for text in dataset[column]]
-
-
-def texts_for_label(dataset: Dataset, label_id: int, *, label_column: str = "label") -> List[str]:
-    """Collect texts belonging to a specific numeric label id."""
-
-    if label_column not in dataset.column_names:
-        raise ValueError(f"Dataset is missing required column '{label_column}'.")
-    indices = [
-        idx
-        for idx, label in enumerate(dataset[label_column])
-        if int(label) == int(label_id)
-    ]
-    text_column = dataset.column_names[0] if "text" not in dataset.column_names else "text"
-    return [str(dataset[text_column][idx]) for idx in indices]
-
-
-def load_target_author_texts(
-    dataset_dir: Path,
-    metadata_dir: Path,
-    target_author: str,
-    *,
-    split: str = "train",
-) -> List[str]:
-    """Convenience wrapper to load texts for the configured target author."""
-
-    dataset = load_dataset_dict(dataset_dir)
-    split_dataset = ensure_split(dataset, split)
-
-    label2id, _ = read_label_mapping(metadata_dir)
-    target_label = label2id.get(target_author)
-    if target_label is None:
-        raise ValueError(f"Target author '{target_author}' missing from label mapping.")
-
-    return texts_for_label(split_dataset, target_label)
-

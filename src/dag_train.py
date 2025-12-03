@@ -1,7 +1,7 @@
-"""Train the augmented multi-class BERT discriminator model (D_ag).
+"""Train the augmented discriminator model (D_ag).
 
 This script fine-tunes a BERT sequence classification model on the D_ag dataset
-produced by :mod:`src.dag_preprocess`. The model classifies text as:
+produced by "src.dag_preprocess". The model classifies text as:
 - Target author
 - Distractor authors
 - Generated text

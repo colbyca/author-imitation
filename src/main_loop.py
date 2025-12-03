@@ -1,6 +1,6 @@
 """Main iterative training loop for generator improvement via hard negative mining.
 
-This script uses a fixed discriminator (D0) to identify hard negatives and
+This script uses a fixed discriminator (dag) to identify hard negatives and
 iteratively improve the generator model through multiple training iterations.
 The discriminator remains unchanged throughout all iterations.
 """
@@ -19,12 +19,9 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 import numpy as np
 import torch
-from datasets import Dataset, DatasetDict, load_from_disk
+from datasets import Dataset, load_from_disk
 from transformers import (
-    BertForSequenceClassification,
-    BertTokenizerFast,
     DataCollatorForLanguageModeling,
-    DataCollatorWithPadding,
     GPT2LMHeadModel,
     GPT2TokenizerFast,
     Trainer,
@@ -34,7 +31,6 @@ from transformers import (
 
 from config import CONFIG
 from utils import (
-    BertClassifierTrainer,
     build_word_prompts,
     collect_texts,
     ensure_split,
@@ -268,22 +264,22 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--g0-model-dir",
         type=Path,
-        help="Path to the original generator model (G0).",
+        help="Path to the original generator model (G_0).",
     )
     parser.add_argument(
         "--g0-dataset-dir",
         type=Path,
-        help="Path to the dataset used to train G0.",
+        help="Path to the dataset used to train G_0.",
     )
     parser.add_argument(
-        "--d0-model-dir",
+        "--dag-model-dir",
         type=Path,
-        help="Path to the original multiclass BERT discriminator (D0).",
+        help="Path to the augmented BERT discriminator (D_ag).",
     )
     parser.add_argument(
-        "--d0-dataset-dir",
+        "--daa-dataset-dir",
         type=Path,
-        help="Path to the dataset used to train D0.",
+        help="Path to the dataset used to train D_aa. Used to build prompts.",
     )
     parser.add_argument(
         "--metadata-dir",
@@ -453,11 +449,8 @@ def train_generator(
 
 
 def main() -> None:
-    """Main training loop."""
     args = parse_args()
     setup_logging(args.logging_level)
-    
-    
 
     if args._run_step == "generator":
         setup_logging(args.logging_level)
@@ -467,19 +460,17 @@ def main() -> None:
         LOGGER.info("--- Generator Subprocess Complete ---")
         sys.exit(0)
         
-    # Validate inputs
     if not args.g0_model_dir.exists():
-        raise FileNotFoundError(f"G0 model directory not found: {args.g0_model_dir}")
+        raise FileNotFoundError(f"G_0 model directory not found: {args.g0_model_dir}")
     if not args.g0_dataset_dir.exists():
-        raise FileNotFoundError(f"G0 dataset directory not found: {args.g0_dataset_dir}")
-    if not args.d0_model_dir.exists():
-        raise FileNotFoundError(f"D0 model directory not found: {args.d0_model_dir}")
-    if not args.d0_dataset_dir.exists():
-        raise FileNotFoundError(f"D0 dataset directory not found: {args.d0_dataset_dir}")
+        raise FileNotFoundError(f"G_0 dataset directory not found: {args.g0_dataset_dir}")
+    if not args.dag_model_dir.exists():
+        raise FileNotFoundError(f"D_ag model directory not found: {args.dag_model_dir}")
+    if not args.daa_dataset_dir.exists():
+        raise FileNotFoundError(f"D_aa dataset directory not found: {args.daa_dataset_dir}")
     if not args.metadata_dir.exists():
         raise FileNotFoundError(f"Metadata directory not found: {args.metadata_dir}")
     
-    # Setup device
     device = select_device(args.device)
     LOGGER.info("Using device: %s", device)
     
@@ -487,18 +478,14 @@ def main() -> None:
     generator_texts = load_generator_texts_metadata(args.metadata_dir)
     LOGGER.info("Loaded %d original generator texts", len(generator_texts))
     
-    # Load label mappings
-    label2id, id2label = read_label_mapping(args.metadata_dir)
     target_author = CONFIG.preprocess.target_author
     
-    # Load DAG label mapping (needed for classification)
     dag_label_path = args.metadata_dir / "dag_label_mapping.json"
     if not dag_label_path.exists():
         raise FileNotFoundError(f"DAG label mapping not found at {dag_label_path}")
     dag_label_data = json.loads(dag_label_path.read_text(encoding="utf-8"))
     dag_id2label = {int(k): str(v) for k, v in dag_label_data["id2label"].items()}
     
-    # Initialize tokenizers
     gpt2_tokenizer = GPT2TokenizerFast.from_pretrained(CONFIG.tokenizers.gpt2_model_name)
     if gpt2_tokenizer.pad_token is None:
         gpt2_tokenizer.pad_token = gpt2_tokenizer.eos_token
@@ -569,10 +556,10 @@ def main() -> None:
         model = model.to(device)
         model.eval()
 
-        # Load texts from d0_dataset for prompts
-        d0_dataset = load_dataset_dict(args.d0_dataset_dir)
-        d0_validate = ensure_split(d0_dataset, "validation")
-        all_texts = collect_texts(d0_validate)
+        # Load texts from daa_dataset for prompts
+        daa_dataset = load_dataset_dict(args.daa_dataset_dir)
+        daa_validate = ensure_split(daa_dataset, "validation")
+        all_texts = collect_texts(daa_validate)
 
         # Build prompts
         prompts = build_word_prompts(
@@ -618,9 +605,8 @@ def main() -> None:
 
         # Step 2: Identify hard negatives
         LOGGER.info("Step 2/4: Identifying hard negatives...")
-        # Always use the base discriminator (D0) - it is not retrained
-        discriminator_model_path = args.d0_model_dir
-        LOGGER.info("Using base discriminator (D0) at %s", discriminator_model_path)
+        discriminator_model_path = args.dag_model_dir
+        LOGGER.info("Using discriminator (D_ag) at %s", discriminator_model_path)
 
         # Extract completion texts
         generated_texts = [sample.completion for sample in samples]

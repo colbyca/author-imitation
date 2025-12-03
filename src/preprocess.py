@@ -2,9 +2,9 @@
 
 The script prepares two datasets:
 
-1. GPT-2 causal language modelling dataset for the baseline generator ``G_0``.
-2. BERT sequence classification dataset for the authorship attribution
-   discriminator ``D_{aa}``.
+1. GPT-2 causal language modelling dataset for the baseline generator (G_0).
+2. BERT sequence classification dataset for the holdout authorship attribution
+   discriminator (D_aa).
 """
 
 from __future__ import annotations

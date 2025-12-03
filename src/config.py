@@ -1,10 +1,4 @@
-"""Global configuration for the author imitation project.
-
-This module centralises project-wide settings so that data processing and
-training scripts share a consistent source of truth. It currently focuses on
-preparing the Reuters C50 dataset but can be extended with additional
-configuration blocks as the project grows.
-"""
+"""Global configuration."""
 
 from __future__ import annotations
 
@@ -90,7 +84,7 @@ class G0TrainingConfig:
 
 @dataclass(frozen=True)
 class GenerationConfig:
-    """Default generation controls for G0 text sampling."""
+    """Default generation controls."""
 
     max_new_tokens: int = 200
     min_new_tokens: int = 0
@@ -108,7 +102,7 @@ class GenerationConfig:
 
 @dataclass(frozen=True)
 class DaaTrainingConfig:
-    """Default hyperparameters for training the authorship attribution model."""
+    """Default hyperparameters for training the holdout authorship attribution model."""
 
     model_name: str = "bert-base-uncased"
     learning_rate: float = 2e-5

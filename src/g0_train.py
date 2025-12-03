@@ -1,8 +1,8 @@
 """Train the baseline GPT-2 generator (G0) on the target author's corpus.
 
-This script loads the tokenised dataset produced by :mod:`src.preprocess`
-and fine-tunes a GPT-2 model using Hugging Face's ``Trainer`` API. The
-resulting model is saved to the location defined in :mod:`src.config`.
+This script loads the tokenised dataset produced by "src.preprocess"
+and fine-tunes a GPT-2 model using Hugging Face's "Trainer" API. The
+resulting model is saved to the location defined in "src.config".
 """
 
 from __future__ import annotations

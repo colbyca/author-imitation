@@ -63,29 +63,6 @@ def build_word_prompts(
     return prompts
 
 
-def build_char_prompts(
-    texts: Sequence[str],
-    num_prompts: int,
-    max_chars: int,
-    rng: np.random.Generator,
-) -> List[str]:
-    """Create prompts by sampling texts and truncating to ``max_chars``."""
-
-    if num_prompts <= 0:
-        return []
-    if max_chars <= 0:
-        return ["" for _ in range(num_prompts)]
-    if not texts:
-        return [""] * num_prompts
-
-    indices = rng.choice(len(texts), size=num_prompts, replace=True)
-    prompts: List[str] = []
-    for idx in indices:
-        sample = texts[int(idx)].replace("\n", " ").strip()
-        prompts.append(sample[:max_chars].strip())
-    return prompts
-
-
 def generate_sequences(
     model: GPT2LMHeadModel,
     tokenizer: GPT2TokenizerFast,

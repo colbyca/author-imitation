@@ -183,18 +183,11 @@ def classify_texts(
     )
     model.to(device)
     model.eval()
-    # Check for NaNs in model parameters
-    for name, param in model.named_parameters():
-        if torch.isnan(param).any():
-            raise RuntimeError(f"Model parameter '{name}' contains NaN values in {model_dir}")
     
-    # Determine max_length
     if max_length is None:
-        # Try to get from model config, fallback to CONFIG
         model_config = json.loads((model_dir / "config.json").read_text(encoding="utf-8"))
         max_length = model_config.get("max_position_embeddings", CONFIG.tokenizers.bert_max_length)
     
-    # Create dataset
     dataset = Dataset.from_dict({"text": list(texts)})
     
     def tokenize(batch):
@@ -208,7 +201,6 @@ def classify_texts(
     
     tokenized = dataset.map(tokenize, batched=True)
     
-    # Setup trainer for prediction
     data_collator = DataCollatorWithPadding(tokenizer)
     training_args = TrainingArguments(
         output_dir=str(model_dir / "eval_outputs"),
@@ -229,7 +221,6 @@ def classify_texts(
         data_collator=data_collator,
     )
     
-    # Predict
     predictions = classifier.predict(tokenized)
     pred_labels = np.argmax(predictions.predictions, axis=-1)
     pred_logits = predictions.predictions  # Raw logits for confidence calculation
@@ -376,12 +367,10 @@ def save_confidence_scores(
     }
     
     for i, (text, conf_row) in enumerate(zip(texts, confidences)):
-        # Build confidence dict for this text
         conf_dict = {}
         for label_id in sorted(id2label.keys()):
             conf_dict[id2label[label_id]] = float(conf_row[label_id])
         
-        # Find predicted label (highest confidence)
         pred_label_id = int(np.argmax(conf_row))
         
         results["predictions"].append({
@@ -412,7 +401,6 @@ def main() -> None:
     if not texts:
         raise ValueError("No texts found in input file.")
     
-    # Setup device
     device = select_device(args.device)
     LOGGER.info("Using device: %s", device)
     
@@ -441,7 +429,7 @@ def main() -> None:
         # Print to stdout
         print(distribution_text)
     
-    # Save confidence scores if requested
+    # Save confidence scores
     if args.confidences_file:
         confidences = compute_confidence_scores(logits)
         save_confidence_scores(args.confidences_file, texts, confidences, id2label)

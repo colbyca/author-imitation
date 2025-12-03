@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Extract first n words from text files in Reuters C50test directories.
 
 This script takes a person's name, extracts the first n words from every text file
@@ -99,13 +98,13 @@ def main() -> None:
         "-o",
         "--output",
         type=str,
-        default="output_first_words.txt",
-        help="Output file path (default: output_first_words.txt)"
+        default="data/prompts/prompts.txt",
+        help="Output file path (default: data/prompts/prompts.txt)"
     )
     parser.add_argument(
         "--data-dir",
         type=str,
-        default=None,
+        default="data/reuter/C50test",
         help="Path to C50test directory (default: data/reuter/C50test)"
     )
     parser.add_argument(
@@ -113,16 +112,14 @@ def main() -> None:
         "--max-texts",
         type=int,
         default=None,
-        help="Maximum number of text files to process from each directory (default: all files)"
+        help="Maximum number of text files to process from each person's directory (default: all files)"
     )
     
     args = parser.parse_args()
     
-    # Determine data directory
     if args.data_dir:
         base_dir = Path(args.data_dir)
     else:
-        # Assume script is in src/, so go up one level to project root
         script_dir = Path(__file__).parent
         project_root = script_dir.parent
         base_dir = project_root / "data" / "reuter" / "C50test"

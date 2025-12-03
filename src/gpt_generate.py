@@ -1,7 +1,7 @@
 """Generate text using GPT-2 models (fine-tuned or raw).
 
 This script can load either:
-- A fine-tuned GPT-2 model from a directory (e.g., G0 trained by :mod:`src.g0_train`)
+- A fine-tuned GPT-2 model from a directory (e.g., G0 trained by "src.g0_train")
 - A raw (untrained) GPT-2 model by name (e.g., gpt2-large)
 """
 
@@ -244,7 +244,7 @@ def collect_prompts(args: argparse.Namespace, rng: Optional[np.random.Generator]
         if rng is None:
             rng = np.random.default_rng(args.seed)
         all_texts = load_all_author_texts()
-        num_words = max(5, min(10, args.prompt_num_words))  # Clamp to 5-10 range
+        num_words = max(5, min(10, args.prompt_num_words))
         auto_prompts = build_word_prompts(all_texts, args.num_auto_prompts, num_words, rng)
         prompts.extend(auto_prompts)
         LOGGER.info("Generated %d automatic prompts from all author texts (first %d words).", len(auto_prompts), num_words)
@@ -374,17 +374,11 @@ def main() -> None:
 
     model, tokenizer = load_model_and_tokenizer(args.model_dir, args.model_name)
     
-    # Time model transfer to device
-    device_transfer_start = time.time()
     model = model.to(device)
-    device_transfer_time = time.time() - device_transfer_start
-    if device_transfer_time > 0.1:  # Only log if it takes noticeable time
-        LOGGER.info("Model transfer to device completed in %.2f seconds", device_transfer_time)
-    
+
     generation_kwargs = build_generation_kwargs(args, tokenizer)
     LOGGER.debug("Generation kwargs: %s", generation_kwargs)
 
-    # Time the generation process
     generation_start = time.time()
     samples = generate_sequences(
         model,
@@ -396,13 +390,10 @@ def main() -> None:
     )
     generation_time = time.time() - generation_start
     
-    # Calculate statistics
     num_prompts = len(prompts)
-    num_return_sequences = int(generation_kwargs.get("num_return_sequences", 1))
     total_generations = len(samples)
     max_new_tokens = generation_kwargs.get("max_new_tokens", 0)
     
-    # Estimate total tokens generated (approximate)
     total_tokens_approx = total_generations * max_new_tokens
     tokens_per_second = total_tokens_approx / generation_time if generation_time > 0 else 0
     time_per_prompt = generation_time / num_prompts if num_prompts > 0 else 0
