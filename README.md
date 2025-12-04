@@ -2,6 +2,8 @@
 
 This project implements an iterative generator-discriminator training loop for author imitation. The system trains GPT-2 generators to mimic a target author's writing style while using BERT-based discriminators to identify generated text. Using a technique similar tohard negative mining, we aim to iteratively improve the generator model by training it on generated text that the discriminator classifies as the target author.
 
+The training scripts were designed to be run on a Macbook Pro using the Metal API. Additional configuration may be required to use CUDA.
+
 ## Overview
 
 The project consists of several key components:
