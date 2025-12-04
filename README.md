@@ -336,3 +336,20 @@ Key configuration options in `src/config.py`:
 - **BERT Model**: `CONFIG.tokenizers.bert_model_name = "bert-base-uncased"`
 - **Block Size**: `CONFIG.tokenizers.gpt2_block_size = 512`
 - **Max Length**: `CONFIG.tokenizers.bert_max_length = 512`
+
+
+## Data Analysis
+
+In the `data_analysis` folder, there are 2 more folders.
+* `text_analysis` contains the texts from Aaron Pressman from the Reuters C50 author as well as generated texts from when we ran our tests along with 2 python files to run analysis on the texts.
+    * `text_folder_analyis.py` is for running on any Reuters C50 author.
+    * `generated_text_evaluation.py` is for running on any generated .jsonl file.
+* `analysis_reports` contains the text analysis reports from running the python files on the text files provided in `text_analysis`.
+
+### Running Text Analysis
+
+`text_folder_analyis.py` 
+* use `python text_folder_analysis.py <file_path>`
+
+`generated_text_evaluation.py`
+* use `python generated_text_evaluation.py <jsonl_path>`
